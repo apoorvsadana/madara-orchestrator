@@ -1,6 +1,7 @@
 use aws_config::Region;
 use aws_sdk_eventbridge::types::{InputTransformer, RuleState, Target};
 use aws_sdk_sqs::types::QueueAttributeName;
+use aws_sdk_sqs::types::QueueAttributeName::VisibilityTimeout;
 use bytes::Bytes;
 use orchestrator::data_storage::aws_s3::config::{AWSS3ConfigType, S3LocalStackConfig};
 use orchestrator::data_storage::aws_s3::AWSS3;
@@ -9,7 +10,11 @@ use orchestrator::queue::job_queue::{
     WorkerTriggerMessage, WorkerTriggerType, JOB_HANDLE_FAILURE_QUEUE, JOB_PROCESSING_QUEUE, JOB_VERIFICATION_QUEUE,
     WORKER_TRIGGER_QUEUE,
 };
-use std::fs::read;
+use std::collections::HashMap;
+use std::fs::{read, File};
+use std::io::Read;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 pub const PIE_FILE_BLOCK_NUMBER: u64 = 101038;
 
@@ -32,10 +37,32 @@ impl LocalStack {
         }
 
         // Creating SQS queues
-        sqs_client.create_queue().queue_name(JOB_PROCESSING_QUEUE).send().await?;
-        sqs_client.create_queue().queue_name(JOB_VERIFICATION_QUEUE).send().await?;
-        sqs_client.create_queue().queue_name(JOB_HANDLE_FAILURE_QUEUE).send().await?;
-        sqs_client.create_queue().queue_name(WORKER_TRIGGER_QUEUE).send().await?;
+        let mut queue_attributes = HashMap::new();
+        queue_attributes.insert(VisibilityTimeout, "1".into());
+        sqs_client
+            .create_queue()
+            .queue_name(JOB_PROCESSING_QUEUE)
+            .set_attributes(Some(queue_attributes.clone()))
+            .send()
+            .await?;
+        sqs_client
+            .create_queue()
+            .queue_name(JOB_VERIFICATION_QUEUE)
+            .set_attributes(Some(queue_attributes.clone()))
+            .send()
+            .await?;
+        sqs_client
+            .create_queue()
+            .queue_name(JOB_HANDLE_FAILURE_QUEUE)
+            .set_attributes(Some(queue_attributes.clone()))
+            .send()
+            .await?;
+        sqs_client
+            .create_queue()
+            .queue_name(WORKER_TRIGGER_QUEUE)
+            .set_attributes(Some(queue_attributes.clone()))
+            .send()
+            .await?;
         println!("sqs queues creation completed ✅");
 
         Ok(())
@@ -57,16 +84,16 @@ impl LocalStack {
         println!("program output file uploaded to localstack s3 ✅");
 
         // getting the PIE file from s3 bucket using URL provided
-        let file = reqwest::get(format!(
-            "https://madara-orchestrator-sharp-pie.s3.amazonaws.com/{}-SN.zip",
-            PIE_FILE_BLOCK_NUMBER
-        ))
-        .await?;
-        let file_bytes = file.bytes().await?;
+        let mut file = File::open(
+            PathBuf::from_str("/Users/apoorvsadana/Documents/GitHub/madara-orchestrator/e2e-tests/101038.zip").unwrap(),
+        )?;
+        let mut file_bytes = Vec::new();
+        file.read_to_end(&mut file_bytes).unwrap();
+        // let file_bytes = file.bytes().await?;
 
         // putting the pie file into localstack s3
         let s3_file_key = PIE_FILE_BLOCK_NUMBER.to_string() + "/pie.zip";
-        s3_client.put_data(file_bytes, &s3_file_key).await?;
+        s3_client.put_data(file_bytes.into(), &s3_file_key).await?;
         println!("PIE file uploaded to localstack s3 ✅");
 
         Ok(())

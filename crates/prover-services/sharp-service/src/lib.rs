@@ -35,14 +35,21 @@ impl ProverClient for SharpProverService {
                 //     snos::sharp::pie::encode_pie_mem(cairo_pie).map_err(ProverClientError::PieEncoding)?;
                 // let (_, job_key) = self.sharp_client.add_job(&encoded_pie).await?;
                 // Ok(combine_task_id(&job_key, &fact_info.fact))
-                Ok(combine_task_id(&Uuid::new_v4(), &B256::from(I256::ZERO)))
+                Ok(combine_task_id(
+                    &Uuid::new_v4(),
+                    &B256::from_str("0xec8fa9cdfe069ed59b8f17aeecfd95c6abd616379269d2fa16a80955b6e0f068").unwrap(),
+                ))
             }
         }
     }
 
     async fn get_task_status(&self, task_id: &TaskId) -> Result<TaskStatus, ProverClientError> {
+        println!("i am inside get_task_status {:?}", task_id);
         let (job_key, fact) = split_task_id(task_id)?;
+        println!("i have got the job key and fact - {:?} {:?}", job_key, fact);
         let res = self.sharp_client.get_job_status(&job_key).await?;
+
+        println!("this is what sharp is saying {:?}", res);
 
         match res.status {
             // TODO : We would need to remove the FAILED, UNKNOWN, NOT_CREATED status as it is not in the sharp client response specs :
@@ -144,5 +151,14 @@ mod tests {
         }
         log!(Error, "SHARP: waiting timeout");
         panic!("Out of attempts");
+    }
+
+    #[test]
+    fn split_task_id() {
+        let task_id: String =
+            "4fa45959-18dc-41cb-a509-c9c5a78ebd47:0x0000000000000000000000000000000000000000000000000000000000000000"
+                .into();
+        let (job_key, fact) = crate::split_task_id(&task_id).unwrap();
+        println!("this is job key and fact {:?} {:?}", job_key, fact);
     }
 }

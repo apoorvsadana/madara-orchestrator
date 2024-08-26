@@ -33,8 +33,10 @@ impl FactChecker {
     }
 
     pub async fn is_valid(&self, fact: &B256) -> Result<bool, FactCheckerError> {
+        println!("going to print this fact on chain {:?}", fact);
         let FactRegistry::isValidReturn { _0 } =
             self.fact_registry.isValid(*fact).call().await.map_err(FactCheckerError::FactRegistry)?;
+        println!("got is valid {:?}", _0);
         Ok(_0)
     }
 }
@@ -42,6 +44,7 @@ impl FactChecker {
 #[cfg(test)]
 mod tests {
     use crate::FactChecker;
+    use alloy::node_bindings::Anvil;
     use alloy::primitives::{Address, B256};
     use rstest::rstest;
     use std::str::FromStr;
@@ -59,8 +62,15 @@ mod tests {
     pub async fn fact_registry_is_valid(#[case] fact: &str, #[case] is_valid: bool) {
         dotenvy::from_filename("../.env.test").expect("Failed to load the .env file");
 
+        let forked_anvil = Anvil::new()
+            .path("/Users/apoorvsadana/.foundry/bin/anvil")
+            .fork(get_env_var_or_panic("ETHEREUM_MAINNET_RPC_URL").as_str())
+            .fork_block_number(18169622)
+            .try_spawn()
+            .expect("Unable to fork eth mainnet and run anvil.");
+
         let fact_checker = FactChecker::new(
-            Url::from_str(get_env_var_or_panic("ETHEREUM_MAINNET_RPC_URL").as_str()).unwrap(),
+            Url::from_str(format!("http://localhost:{}", forked_anvil.port()).as_str()).unwrap(),
             Address::from_str(get_env_var_or_panic("MEMORY_PAGES_CONTRACT_ADDRESS").as_str()).unwrap(),
         );
         let fact = B256::from_str(fact).unwrap();

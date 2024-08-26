@@ -54,15 +54,9 @@ impl Orchestrator {
         let port_str = format!("{}", port);
         let envs = [envs, vec![("PORT".to_string(), port_str)]].concat();
 
-        let mut command = Command::new("cargo");
-        command
-            .arg("run")
-            .arg("--bin")
-            .arg("orchestrator")
-            .current_dir(repository_root)
-            .envs(envs)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+        let mut command =
+            Command::new("/Users/apoorvsadana/Documents/GitHub/madara-orchestrator/target/debug/orchestrator");
+        command.current_dir(repository_root).envs(envs).stdout(Stdio::piped()).stderr(Stdio::piped());
 
         let mut process = command.spawn().expect("Failed to start process");
 

@@ -19,12 +19,13 @@ impl EthereumClient {
         let eth_mainnet_rpc_url = get_env_var_or_panic("ETHEREUM_MAINNET_RPC_URL");
 
         let forked_anvil = Anvil::new()
-            .fork(eth_mainnet_rpc_url).port(8545u16)
+            .path("/Users/apoorvsadana/.foundry/bin/anvil")
+            .fork(eth_mainnet_rpc_url)
             .fork_block_number(BLOCK_TO_FORK)
             .try_spawn()
             .expect("Unable to fork eth mainnet and run anvil.");
 
-        Self { anvil_endpoint: forked_anvil.endpoint(), anvil_instance: forked_anvil }
+        Self { anvil_endpoint: "http://localhost:8545".into(), anvil_instance: forked_anvil }
     }
 
     /// To get the anvil endpoint

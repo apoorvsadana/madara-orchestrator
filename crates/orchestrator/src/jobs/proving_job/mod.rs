@@ -72,6 +72,7 @@ impl Job for ProvingJob {
 
     async fn verify_job(&self, config: &Config, job: &mut JobItem) -> Result<JobVerificationStatus, JobError> {
         let task_id: String = job.external_id.unwrap_string().map_err(|e| JobError::Other(OtherError(e)))?.into();
+        println!("this is the task id inside verify job - {:?}", task_id);
         let task_status = config
             .prover_client()
             .get_task_status(&task_id)
